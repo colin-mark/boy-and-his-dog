@@ -1,0 +1,27 @@
+{
+  "name": "boy-and-his-dog",
+  "version": "1.0.0",
+  "description": "A 3D hunting simulation game built with Three.js featuring a young hunter and his loyal black labrador retriever companion",
+  "main": "src/main.js",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint src --ext .js,.ts",
+    "format": "prettier --write src/**/*.{js,ts}"
+  },
+  "keywords": ["threejs", "game", "hunting", "3d", "webgl"],
+  "author": "Colin Alcorn",
+  "license": "MIT",
+  "devDependencies": {
+    "vite": "^5.0.0",
+    "eslint": "^8.0.0",
+    "prettier": "^3.0.0"
+  },
+  "dependencies": {
+    "three": "^0.158.0",
+    "cannon-es": "^0.20.0",
+    "howler": "^2.2.4"
+  }
+}

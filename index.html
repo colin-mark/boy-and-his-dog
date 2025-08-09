@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boy and His Dog - 3D Hunting Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #1a1a1a;
+            color: white;
+            overflow: hidden;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #game-canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 100;
+        }
+        
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            pointer-events: none;
+            z-index: 1000;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+        
+        #crosshair::before {
+            content: '+';
+        }
+        
+        #score {
+            font-size: 18px;
+            color: #ffcc00;
+            font-weight: bold;
+        }
+        
+        #timer {
+            font-size: 18px;
+            color: #ff6666;
+            font-weight: bold;
+        }
+        
+        #ammo {
+            font-size: 18px;
+            color: #66ccff;
+            font-weight: bold;
+        }
+        
+        #hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 16px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+        }
+        
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            font-size: 24px;
+        }
+        
+        .loading-spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 4px solid #fff;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            font-size: 14px;
+            opacity: 0.8;
+            max-width: 300px;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="game-canvas"></canvas>
+        
+        <div id="ui-overlay">
+            <div id="crosshair"></div>
+            
+            <div id="hud">
+                <div>Boy and His Dog</div>
+                <div id="fps-counter">FPS: --</div>
+                <div id="score">Score: 0</div>
+                <div id="timer">Time: 5:00</div>
+                <div id="ammo">Ammo: 5/5</div>
+            </div>
+            
+            <div id="instructions">
+                <strong>Controls:</strong><br>
+                WASD / Arrow Keys - Move<br>
+                Mouse - Look around<br>
+                Shift - Run<br>
+                Ctrl - Crouch<br>
+                Space - Shoot<br>
+                F - Dog search<br>
+                G - Dog retrieve<br>
+                H - Dog heel<br>
+                R - Reload<br>
+                <br>
+                <strong>Mouse:</strong><br>
+                Click & Drag - Look around<br>
+                Release - Unlock mouse<br>
+                <br>
+                <strong>Shooting:</strong><br>
+                Spacebar - Shoot at crosshair (5 shots)<br>
+                R - Reload (2 seconds)
+            </div>
+        </div>
+        
+        <div id="loading">
+            <div class="loading-spinner"></div>
+            <div>Loading Boy and His Dog...</div>
+        </div>
+    </div>
+    
+    <script type="module" src="/src/main.js"></script>
+</body>
+</html>
