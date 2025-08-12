@@ -1,0 +1,30 @@
+functionsDirectory = "/Users/colinalcorn/Desktop/Personal/Code/boy-and-his-dog/netlify/functions"
+functionsDirectoryOrigin = "config-v1"
+plugins = []
+headers = []
+redirects = []
+
+[functions]
+
+[functions."*"]
+
+[build]
+publish = "/Users/colinalcorn/Desktop/Personal/Code/boy-and-his-dog/dist"
+publishOrigin = "config"
+commandOrigin = "config"
+command = "npm run build"
+functions = "/Users/colinalcorn/Desktop/Personal/Code/boy-and-his-dog/netlify/functions"
+
+[build.environment]
+
+[build.processing]
+
+[build.processing.css]
+
+[build.processing.html]
+
+[build.processing.images]
+
+[build.processing.js]
+
+[build.services]
