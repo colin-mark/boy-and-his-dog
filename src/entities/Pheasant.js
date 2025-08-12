@@ -15,7 +15,7 @@ export class Pheasant {
         this.isDead = false;
         
         // Flight behavior
-        this.flightSpeed = 15;
+        this.flightSpeed = 5; // Further reduced for much easier shooting
         this.flightHeight = 8 + Math.random() * 5;
         this.flightDirection = new THREE.Vector3();
         this.flightTime = 0;
@@ -130,11 +130,25 @@ export class Pheasant {
     update(deltaTime, dog, terrainSystem, player) {
         if (this.isDead) return;
         
+        // Debug: Log player position occasionally for first pheasant
+        if (!this.lastPlayerDebug) this.lastPlayerDebug = 0;
+        this.lastPlayerDebug += deltaTime;
+        if (this.lastPlayerDebug > 10) { // Every 10 seconds
+            if (player) {
+                console.log(`Player position: (${player.position.x.toFixed(1)}, ${player.position.y.toFixed(1)}, ${player.position.z.toFixed(1)})`);
+                console.log(`This pheasant position: (${this.position.x.toFixed(1)}, ${this.position.y.toFixed(1)}, ${this.position.z.toFixed(1)})`);
+            } else {
+                console.log('Player is null in pheasant update');
+            }
+            this.lastPlayerDebug = 0;
+        }
+        
         // Check if dog is close enough to flush
         if (!this.hasBeenFlushed && !this.isFlying && dog) {
             const distanceToDog = this.position.distanceTo(dog.position);
             
             if (distanceToDog < this.flushDistance && dog.state === 'search') {
+                console.log(`Dog flushing pheasant! Distance: ${distanceToDog.toFixed(2)}, Dog state: ${dog.state}`);
                 this.flush();
             }
         }
@@ -143,7 +157,13 @@ export class Pheasant {
         if (!this.hasBeenFlushed && !this.isFlying && player) {
             const distanceToPlayer = this.position.distanceTo(player.position);
             
+            // Debug every few seconds for close encounters
+            if (distanceToPlayer < this.flushDistance * 2) {
+                console.log(`Pheasant near player: distance=${distanceToPlayer.toFixed(2)}, flushDistance=${this.flushDistance}, hasBeenFlushed=${this.hasBeenFlushed}, isFlying=${this.isFlying}`);
+            }
+            
             if (distanceToPlayer < this.flushDistance * 1.5) { // Player needs to be closer than dog
+                console.log(`Player flushing pheasant! Distance: ${distanceToPlayer.toFixed(2)}`);
                 this.flush();
             }
         }
@@ -187,7 +207,7 @@ export class Pheasant {
         
         // Initial upward velocity for dramatic flush
         this.velocity.copy(this.flightDirection).multiplyScalar(this.flightSpeed);
-        this.velocity.y = 12; // Strong initial upward burst
+        this.velocity.y = 4; // Further reduced from 6 for easier tracking
         
         // Set rotation to face flight direction
         this.rotation.y = Math.atan2(this.flightDirection.x, this.flightDirection.z);
@@ -197,7 +217,7 @@ export class Pheasant {
         this.flightTime += deltaTime;
         
         // Apply flight physics
-        this.velocity.y -= 2 * deltaTime; // Gentle gravity
+        this.velocity.y -= 1 * deltaTime; // Even gentler gravity for easier shooting
         this.position.add(this.velocity.clone().multiplyScalar(deltaTime));
         
         // Adjust flight direction over time (realistic bird behavior)
@@ -205,8 +225,8 @@ export class Pheasant {
             // After initial burst, level out flight
             this.velocity.y = Math.max(this.velocity.y, -2);
             
-            // Gradually reduce speed
-            const speedReduction = 0.98;
+            // Gradually reduce speed (less reduction for more consistent shooting)
+            const speedReduction = 0.995;
             this.velocity.multiplyScalar(speedReduction);
         }
         
@@ -253,11 +273,15 @@ export class Pheasant {
     }
     
     shoot() {
-        if (this.isShot || this.isDead) return false;
+        if (this.isShot || this.isDead) {
+            console.log('Pheasant already shot or dead, cannot shoot again');
+            return false;
+        }
         
         console.log('Pheasant shot!');
         this.isShot = true;
         this.isFlying = false;
+        console.log(`Pheasant status after shot: isShot=${this.isShot}, isFlying=${this.isFlying}, isDead=${this.isDead}`);
         
         // Stop wing animation
         if (this.mesh && this.mesh.leftWing && this.mesh.rightWing) {
@@ -337,8 +361,8 @@ export class PheasantSystem {
         this.terrainSystem = terrainSystem;
         this.pheasants = [];
         
-        // Spawn settings
-        this.maxPheasants = 8;
+        // Spawn settings  
+        this.maxPheasants = 25; // Increased for ~5 per corn field + scattered ones
         this.spawnRadius = 50;
         this.minSpawnDistance = 10;
         this.respawnTime = 30; // seconds
@@ -359,9 +383,71 @@ export class PheasantSystem {
     }
     
     async spawnInitialPheasants() {
-        for (let i = 0; i < this.maxPheasants; i++) {
-            this.spawnPheasant();
+        const cornFields = this.terrainSystem.cornFields;
+        const pheasantsPerField = 5;
+        const scatteredPheasants = 5;
+        
+        // Spawn 5 pheasants in each corn field
+        for (let fieldIndex = 0; fieldIndex < cornFields.length; fieldIndex++) {
+            console.log(`Spawning ${pheasantsPerField} pheasants in corn field ${fieldIndex + 1}`);
+            for (let i = 0; i < pheasantsPerField; i++) {
+                this.spawnPheasantInCornField(fieldIndex);
+            }
         }
+        
+        // Spawn some scattered pheasants outside corn fields
+        console.log(`Spawning ${scatteredPheasants} scattered pheasants`);
+        for (let i = 0; i < scatteredPheasants; i++) {
+            this.spawnPheasantInTallGrass();
+        }
+        
+        console.log(`Total pheasants spawned: ${this.pheasants.length}`);
+    }
+    
+    spawnPheasantInCornField(fieldIndex) {
+        const cornFields = this.terrainSystem.cornFields;
+        if (fieldIndex >= cornFields.length) return;
+        
+        const field = cornFields[fieldIndex];
+        
+        // Generate random position within the specific corn field
+        const x = field.minX + Math.random() * (field.maxX - field.minX);
+        const z = field.minZ + Math.random() * (field.maxZ - field.minZ);
+        const terrainHeight = this.terrainSystem.getHeightAt(x, z);
+        
+        const position = new THREE.Vector3(x, terrainHeight + 0.3, z);
+        
+        // Create pheasant
+        const pheasant = new Pheasant(this.scene, position);
+        pheasant.createPheasantModel();
+        this.pheasants.push(pheasant);
+        
+        console.log(`Pheasant spawned in corn field ${fieldIndex + 1} at:`, position);
+        console.log(`Pheasant status: flying=${this.pheasants[this.pheasants.length-1].isFlying}, flushed=${this.pheasants[this.pheasants.length-1].hasBeenFlushed}`);
+    }
+    
+    spawnPheasantInTallGrass() {
+        // Spawn in tall grass around player (scattered)
+        const angle = Math.random() * Math.PI * 2;
+        const distance = this.minSpawnDistance + Math.random() * (this.spawnRadius - this.minSpawnDistance);
+        
+        const position = new THREE.Vector3(
+            Math.cos(angle) * distance,
+            0.3, // Just above ground
+            Math.sin(angle) * distance
+        );
+        
+        // Adjust to terrain height
+        const terrainHeight = this.terrainSystem.getHeightAt(position.x, position.z);
+        position.y = terrainHeight + 0.3;
+        
+        // Create pheasant
+        const pheasant = new Pheasant(this.scene, position);
+        pheasant.createPheasantModel();
+        this.pheasants.push(pheasant);
+        
+        console.log(`Scattered pheasant spawned at:`, position);
+        console.log(`Scattered pheasant status: flying=${this.pheasants[this.pheasants.length-1].isFlying}, flushed=${this.pheasants[this.pheasants.length-1].hasBeenFlushed}`);
     }
     
     spawnPheasant() {
@@ -413,11 +499,26 @@ export class PheasantSystem {
     
     update(deltaTime, dog, player) {
         // Update all pheasants
+        let alivePheasants = 0;
         this.pheasants.forEach(pheasant => {
             if (!pheasant.isDead) {
+                alivePheasants++;
                 pheasant.update(deltaTime, dog, this.terrainSystem, player);
             }
         });
+        
+        // Debug: Log pheasant count every 5 seconds
+        if (!this.lastDebugTime) this.lastDebugTime = 0;
+        this.lastDebugTime += deltaTime;
+        if (this.lastDebugTime > 5) {
+            console.log(`PheasantSystem: ${alivePheasants} alive pheasants, ${this.pheasants.length} total`);
+            // Also log details about first few pheasants
+            for (let i = 0; i < Math.min(3, this.pheasants.length); i++) {
+                const p = this.pheasants[i];
+                console.log(`  Pheasant ${i}: isDead=${p.isDead}, hasBeenFlushed=${p.hasBeenFlushed}, isFlying=${p.isFlying}, position=(${p.position.x.toFixed(1)}, ${p.position.y.toFixed(1)}, ${p.position.z.toFixed(1)})`);
+            }
+            this.lastDebugTime = 0;
+        }
         
         // Remove dead pheasants
         this.pheasants = this.pheasants.filter(pheasant => {
@@ -447,7 +548,15 @@ export class PheasantSystem {
     
     // Get shot pheasants for dog retrieval
     getShotPheasants() {
-        return this.pheasants.filter(pheasant => pheasant.isAvailableForRetrieval());
+        const shotPheasants = this.pheasants.filter(pheasant => pheasant.isAvailableForRetrieval());
+        console.log(`getShotPheasants: Found ${shotPheasants.length} shot pheasants out of ${this.pheasants.length} total`);
+        
+        // Debug: Show status of all pheasants
+        this.pheasants.forEach((pheasant, index) => {
+            console.log(`Pheasant ${index}: isShot=${pheasant.isShot}, isFlying=${pheasant.isFlying}, isDead=${pheasant.isDead}`);
+        });
+        
+        return shotPheasants;
     }
     
     dispose() {

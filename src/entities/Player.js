@@ -411,11 +411,13 @@ export class Player {
         
         // Retrieve command (G key) 
         if (this.input.isKeyPressed('KeyG')) {
+            console.log('Player: G key pressed - calling commandRetrieve()');
             game.dog.commandRetrieve();
         }
         
         // Heel command (H key)
         if (this.input.isKeyPressed('KeyH')) {
+            console.log('Player: H key pressed - calling commandHeel()');
             game.dog.commandHeel();
         }
     }
@@ -455,43 +457,53 @@ export class Player {
         
         console.log(`BANG! Player shot! Ammo remaining: ${this.currentAmmo}`);
         
-        // Create raycast from camera center
+        // Create raycast from crosshair position
         const raycaster = new THREE.Raycaster();
         const camera = this.camera.getCamera();
         
-        // Set raycast from camera center (where crosshair is)
-        raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+        // Set raycast from crosshair position (not camera center)
+        const crosshairMouse = new THREE.Vector2(this.input.crosshair.normalizedX, this.input.crosshair.normalizedY);
+        raycaster.setFromCamera(crosshairMouse, camera);
         
         // Check for pheasant hits within reasonable range
         const pheasants = game.pheasantSystem.pheasants;
         let closestHit = null;
         let closestDistance = Infinity;
         
-        for (const pheasant of pheasants) {
-            if (!pheasant.isFlying || pheasant.isShot) continue;
-            
-            // Check if raycast intersects with pheasant
-            const distance = raycaster.ray.distanceToPoint(pheasant.position);
-            
-            if (distance < 2 && pheasant.position.distanceTo(camera.position) < 50) {
-                if (distance < closestDistance) {
-                    closestHit = pheasant;
-                    closestDistance = distance;
+        try {
+            for (const pheasant of pheasants) {
+                if (!pheasant || !pheasant.isFlying || pheasant.isShot) continue;
+                
+                // Check if raycast intersects with pheasant
+                const distance = raycaster.ray.distanceToPoint(pheasant.position);
+                
+                if (distance < 2 && pheasant.position.distanceTo(camera.position) < 50) {
+                    if (distance < closestDistance) {
+                        closestHit = pheasant;
+                        closestDistance = distance;
+                    }
                 }
             }
+        } catch (error) {
+            console.error('Error in shooting raycast:', error);
+            return;
         }
         
         // If we hit a pheasant
         if (closestHit) {
-            const wasHit = closestHit.shoot();
-            if (wasHit) {
-                console.log('Hit! Pheasant down! Send dog to retrieve for points.');
-                
-                // Don't award points yet - only when dog retrieves
-                // Tell dog about the downed bird automatically
-                if (game.dog) {
-                    game.dog.setState('retrieve');
+            try {
+                const wasHit = closestHit.shoot();
+                if (wasHit) {
+                    console.log('Hit! Pheasant down! Send dog to retrieve for points.');
+                    
+                    // Don't award points yet - only when dog retrieves
+                    // Tell dog about the downed bird automatically
+                    if (game.dog && typeof game.dog.setState === 'function') {
+                        game.dog.setState('retrieve');
+                    }
                 }
+            } catch (error) {
+                console.error('Error shooting pheasant:', error);
             }
         } else {
             console.log('Miss!');
@@ -501,7 +513,9 @@ export class Player {
     addScore(points) {
         const game = this.scene.scene.userData.game;
         if (game) {
-            game.score = (game.score || 0) + points;
+            const oldScore = game.score || 0;
+            game.score = oldScore + points;
+            console.log(`Score updated: +${points} points = ${game.score} total`);
             
             // Update score display
             const scoreElement = document.getElementById('score');
@@ -569,8 +583,12 @@ export class Player {
     
     createBulletVisual() {
         const camera = this.camera.getCamera();
-        const direction = new THREE.Vector3(0, 0, -1);
-        direction.applyQuaternion(camera.quaternion);
+        
+        // Get direction from crosshair position instead of camera center
+        const crosshairMouse = new THREE.Vector2(this.input.crosshair.normalizedX, this.input.crosshair.normalizedY);
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(crosshairMouse, camera);
+        const direction = raycaster.ray.direction.clone();
         
         // Create bullet geometry and material
         const bulletGeometry = new THREE.SphereGeometry(0.05, 6, 6);

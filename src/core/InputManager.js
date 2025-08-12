@@ -1,3 +1,5 @@
+import * as THREE from 'three';
+
 export class InputManager {
     constructor() {
         this.keys = new Map();
@@ -21,6 +23,14 @@ export class InputManager {
         // Shooting
         this.shootRequested = false;
         this.spaceWasPressed = false;
+        
+        // Crosshair tracking
+        this.crosshair = {
+            screenX: window.innerWidth / 2,
+            screenY: window.innerHeight / 2,
+            normalizedX: 0, // -1 to 1
+            normalizedY: 0  // -1 to 1
+        };
         
         // Input callbacks
         this.callbacks = {
@@ -74,6 +84,11 @@ export class InputManager {
     onKeyDown(event) {
         this.keys.set(event.code, true);
         
+        // Debug logging for F, G, H keys
+        if (event.code === 'KeyF' || event.code === 'KeyG' || event.code === 'KeyH') {
+            console.log(`InputManager: ${event.code} pressed`);
+        }
+        
         // Prevent default for game keys
         if (this.isGameKey(event.code)) {
             event.preventDefault();
@@ -109,6 +124,9 @@ export class InputManager {
             this.mouse.deltaX = 0;
             this.mouse.deltaY = 0;
         }
+        
+        // Always update crosshair position (even when pointer locked)
+        this.updateCrosshairPosition(event);
         
         // Trigger callbacks
         this.callbacks.mouseMove.forEach(callback => callback(event));
@@ -237,7 +255,7 @@ export class InputManager {
             'ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight', // Movement (Arrow keys)
             'Space', 'ShiftLeft', 'ShiftRight', // Jump, run
             'ControlLeft', 'ControlRight', // Crouch
-            'KeyF', 'KeyR', 'KeyE', // Interact, reload, use
+            'KeyF', 'KeyG', 'KeyH', 'KeyR', 'KeyE', // Dog commands, interact, reload, use
             'Escape', 'Tab' // Menu, inventory
         ];
         return gameKeys.includes(keyCode);
@@ -285,6 +303,46 @@ export class InputManager {
     
     isReloadRequested() {
         return this.keys.get('KeyR');
+    }
+    
+    // Crosshair methods
+    updateCrosshairPosition(event) {
+        if (this.isPointerLocked) {
+            // When pointer locked, accumulate movement to move crosshair
+            this.crosshair.screenX += event.movementX || 0;
+            this.crosshair.screenY += event.movementY || 0;
+            
+            // Clamp to screen bounds
+            this.crosshair.screenX = Math.max(0, Math.min(window.innerWidth, this.crosshair.screenX));
+            this.crosshair.screenY = Math.max(0, Math.min(window.innerHeight, this.crosshair.screenY));
+        } else {
+            // When not locked, use direct mouse position
+            this.crosshair.screenX = event.clientX;
+            this.crosshair.screenY = event.clientY;
+        }
+        
+        // Convert to normalized coordinates (-1 to 1)
+        this.crosshair.normalizedX = (this.crosshair.screenX / window.innerWidth) * 2 - 1;
+        this.crosshair.normalizedY = -((this.crosshair.screenY / window.innerHeight) * 2 - 1); // Flip Y
+        
+        // Update crosshair DOM element
+        this.updateCrosshairDOM();
+    }
+    
+    updateCrosshairDOM() {
+        const crosshairElement = document.getElementById('crosshair');
+        if (crosshairElement) {
+            crosshairElement.style.left = this.crosshair.screenX + 'px';
+            crosshairElement.style.top = this.crosshair.screenY + 'px';
+        }
+    }
+    
+    getCrosshairDirection(camera) {
+        // Convert crosshair screen position to world direction
+        const mouse = new THREE.Vector2(this.crosshair.normalizedX, this.crosshair.normalizedY);
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(mouse, camera);
+        return raycaster.ray.direction.clone();
     }
     
     // Callback system

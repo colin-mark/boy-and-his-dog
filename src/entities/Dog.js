@@ -370,42 +370,50 @@ export class Dog {
     }
     
     retrieveBird() {
-        // Get reference to game for shot pheasants
-        const game = this.scene.userData.game;
-        if (!game || !game.pheasantSystem) {
-            this.setState('follow');
-            return;
-        }
-        
-        // Find the nearest shot pheasant
-        if (!this.retrieveTarget || this.retrieveTarget.isDead) {
-            const shotPheasants = game.pheasantSystem.getShotPheasants();
-            
-            if (shotPheasants.length === 0) {
-                // No birds to retrieve, go back to heeling
+        try {
+            // Get reference to game for shot pheasants
+            const game = this.scene.userData.game;
+            if (!game || !game.pheasantSystem) {
+                console.log('Dog: No game or pheasant system found, returning to heel');
                 this.setState('heel');
                 return;
             }
             
-            // Find closest shot pheasant
+            // Always look for shot pheasants when in retrieve mode
+            const shotPheasants = game.pheasantSystem.getShotPheasants();
+            console.log(`Dog: Looking for shot pheasants, found ${shotPheasants.length}`);
+            
+            if (shotPheasants.length === 0) {
+                // No birds to retrieve, go back to heeling
+                console.log('Dog: No shot pheasants found, returning to heel');
+                this.setState('heel');
+                return;
+            }
+            
+            // Find closest shot pheasant within visible range (always refresh target)
             let closest = null;
             let closestDistance = Infinity;
+            const maxRetrieveRange = 100; // Dog can see and retrieve birds within 100 units
             
             for (const pheasant of shotPheasants) {
                 const distance = this.position.distanceTo(pheasant.position);
-                if (distance < closestDistance) {
+                if (distance < closestDistance && distance <= maxRetrieveRange) {
                     closest = pheasant;
                     closestDistance = distance;
                 }
             }
             
             this.retrieveTarget = closest;
-        }
-        
-        if (!this.retrieveTarget) {
-            this.setState('heel');
-            return;
-        }
+            
+            if (this.retrieveTarget) {
+                console.log(`Dog: Targeting bird at distance ${closestDistance.toFixed(1)} for retrieval`);
+            }
+            
+            if (!this.retrieveTarget) {
+                console.log('Dog: No birds found within retrieve range, returning to heel');
+                this.setState('heel');
+                return;
+            }
         
         // Move towards the downed bird
         const distanceToBird = this.position.distanceTo(this.retrieveTarget.position);
@@ -437,6 +445,11 @@ export class Dog {
         } else {
             // Move towards bird
             this.targetPosition.copy(this.retrieveTarget.position);
+        }
+        } catch (error) {
+            console.error('Dog retrieveBird error:', error);
+            this.setState('heel');
+            return;
         }
     }
     
@@ -586,10 +599,12 @@ export class Dog {
     
     // Command methods (called by player input)
     commandHeel() {
+        console.log('Dog: Heel command received!');
         this.setState('heel');
     }
     
     commandRetrieve() {
+        console.log('Dog: Retrieve command received!');
         this.setState('retrieve');
     }
     
